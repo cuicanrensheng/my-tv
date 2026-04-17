@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:  # 加上这行，就能手动点 Run workflow 了
 
 jobs:
   build:
