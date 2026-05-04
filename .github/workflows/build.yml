@@ -27,7 +27,7 @@ jobs:
         run: |
           mkdir -p app/src/main/res/values
           cat > app/src/main/res/values/styles.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
+
 <resources>
     <style name="Theme.MyTv" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/purple_500</item>
