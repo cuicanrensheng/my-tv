@@ -43,4 +43,8 @@ dependencies {
 
     // 关键：添加电视端Leanback依赖，解决主题找不到的问题
     implementation 'androidx.leanback:leanback:1.2.0-alpha02'
+    
+    // protobuf 核心依赖
+    implementation 'com.google.protobuf:protobuf-java:3.25.3'
+    implementation 'com.google.protobuf:protobuf-java-util:3.25.3'
 }
