@@ -20,9 +20,7 @@ jobs:
 
       - name: 替换内置直播源接口
         run: |
-          # 替换 api.json 中的配置地址
           sed -i 's|http.*\.json|http://home.jundie.top:81/top98.json|g' app/src/main/assets/api.json || true
-          # 替换 Kotlin/Java 里的配置地址（如 AppConfig.kt）
           sed -i 's|.*默认接口.*|const val API_URL = "http://home.jundie.top:81/top98.json"|g' app/src/main/java/**/*.kt || true
 
       - name: 修复Theme.MyTv缺失
