@@ -20,12 +20,12 @@ jobs:
 
       - name: 替换内置直播源接口
         run: |
-          # 自行修改源码里的接口配置文件
-          # 一般是 AppConfig.kt / Constants.kt / api.json
-          sed -i 's|.*默认接口.*|const val API_URL = "http://home.jundie.top:81/top98.json"|g' app/src/main/java/**/AppConfig.kt || true
+          # 替换 api.json 中的配置地址
           sed -i 's|http.*\.json|http://home.jundie.top:81/top98.json|g' app/src/main/assets/api.json || true
+          # 替换 Kotlin/Java 里的配置地址（如 AppConfig.kt）
+          sed -i 's|.*默认接口.*|const val API_URL = "http://home.jundie.top:81/top98.json"|g' app/src/main/java/**/*.kt || true
 
-       - name: 修复Theme.MyTv缺失
+      - name: 修复Theme.MyTv缺失
         run: |
           mkdir -p app/src/main/res/values
           cat > app/src/main/res/values/styles.xml << 'EOF'
@@ -41,21 +41,21 @@ jobs:
 </resources>
 EOF
 
-      - name: 修复protobuf依赖缺失
+      - name: 修复protobuf依赖
         run: |
           sed -i '/dependencies {/a \
               implementation "com.google.protobuf:protobuf-java:3.25.3"\
               implementation "com.google.protobuf:protobuf-java-util:3.25.3"' app/build.gradle
 
-      - name: 修复OkHttp/Retrofit依赖缺失
+      - name: 修复OkHttp/Retrofit依赖
         run: |
           sed -i '/dependencies {/a \
               implementation "com.squareup.okhttp3:okhttp:4.12.0"\
               implementation "com.squareup.okhttp3:logging-interceptor:4.12.0"\
               implementation "com.squareup.retrofit2:retrofit:2.9.0"\
               implementation "com.squareup.retrofit2:converter-gson:2.9.0"' app/build.gradle
-       
-      - name: 授予权限
+
+      - name: 授予Gradle执行权限
         run: chmod +x gradlew
 
       - name: 编译Debug包
