@@ -1,6 +1,30 @@
-- name: 修复build.gradle结构错误
-  run: |
-    cat > app/build.gradle << 'EOF'
+name: 影视APP云编译
+
+# 必须同时配置 push 和 workflow_dispatch，才能自动+手动触发
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取源码
+        uses: actions/checkout@v4
+
+      - name: 配置JDK17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 1. 直接覆盖修复 build.gradle（彻底解决 implementation 错误）
+      - name: 重写build.gradle
+        run: |
+          cat > app/build.gradle << 'EOF'
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
@@ -16,11 +40,16 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
             minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            debuggable true
         }
     }
 
@@ -36,12 +65,47 @@ android {
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'com.google.protobuf:protobuf-java:3.25.3'
     implementation 'com.google.protobuf:protobuf-java-util:3.25.3'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
-    implementation 'com.google.android.material:material:1.11.0'
 }
 EOF
+
+      # 2. 修复Theme.MyTv缺失问题（用echo逐行写入，避免YAML解析错误）
+      - name: 创建styles.xml
+        run: |
+          mkdir -p app/src/main/res/values
+          echo '<?xml version="1.0" encoding="utf-8"?>' > app/src/main/res/values/styles.xml
+          echo '<resources>' >> app/src/main/res/values/styles.xml
+          echo '    <style name="Theme.MyTv" parent="Theme.MaterialComponents.DayNight.NoActionBar">' >> app/src/main/res/values/styles.xml
+          echo '        <item name="colorPrimary">@color/purple_500</item>' >> app/src/main/res/values/styles.xml
+          echo '        <item name="colorPrimaryVariant">@color/purple_700</item>' >> app/src/main/res/values/styles.xml
+          echo '        <item name="colorOnPrimary">@color/white</item>' >> app/src/main/res/values/styles.xml
+          echo '        <item name="colorSecondary">@color/teal_200</item>' >> app/src/main/res/values/styles.xml
+          echo '        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>' >> app/src/main/res/values/styles.xml
+          echo '    </style>' >> app/src/main/res/values/styles.xml
+          echo '</resources>' >> app/src/main/res/values/styles.xml
+
+      # 3. 替换直播源接口（只保留一个简单的sed命令）
+      - name: 替换直播源
+        run: |
+          sed -i 's|http.*\.json|http://home.jundie.top:81/top98.json|g' app/src/main/assets/api.json || true
+
+      # 4. 授予权限并编译
+      - name: 授予Gradle权限
+        run: chmod +x gradlew
+
+      - name: 编译Debug包
+        run: ./gradlew assembleDebug --stacktrace
+
+      # 5. 上传成品APK
+      - name: 上传编译好的APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: 影视APP_成品
+          path: app/build/outputs/apk/debug/*.apk
