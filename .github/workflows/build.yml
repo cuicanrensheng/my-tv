@@ -3,7 +3,7 @@ name: 云编译影视APP
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch:
+  workflow_dispatch: # 必须保留这个，才能手动触发
 
 jobs:
   build:
@@ -18,44 +18,47 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: 修复Theme.MyTv缺失
+      # 直接通过命令行写入完整的styles.xml，避免YAML解析问题
+      - name: 修复Theme.MyTv
         run: |
           mkdir -p app/src/main/res/values
-          cat > app/src/main/res/values/styles.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.MyTv" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/purple_500</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <item name="colorSecondary">@color/teal_200</item>
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
-    </style>
-</resources>
-EOF
+          echo '<?xml version="1.0" encoding="utf-8"?>' > app/src/main/res/values/styles.xml
+          echo '<resources>' >> app/src/main/res/values/styles.xml
+          echo '  <style name="Theme.MyTv" parent="Theme.MaterialComponents.DayNight.NoActionBar">' >> app/src/main/res/values/styles.xml
+          echo '    <item name="colorPrimary">@color/purple_500</item>' >> app/src/main/res/values/styles.xml
+          echo '    <item name="colorPrimaryVariant">@color/purple_700</item>' >> app/src/main/res/values/styles.xml
+          echo '    <item name="colorOnPrimary">@color/white</item>' >> app/src/main/res/values/styles.xml
+          echo '    <item name="colorSecondary">@color/teal_200</item>' >> app/src/main/res/values/styles.xml
+          echo '    <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>' >> app/src/main/res/values/styles.xml
+          echo '  </style>' >> app/src/main/res/values/styles.xml
+          echo '</resources>' >> app/src/main/res/values/styles.xml
 
-      - name: 修复protobuf依赖缺失
+      # 用echo命令添加依赖，避免sed的YAML转义问题
+      - name: 添加所有缺失依赖
         run: |
-          sed -i '/dependencies {/a \
-              implementation "com.google.protobuf:protobuf-java:3.25.3"\
-              implementation "com.google.protobuf:protobuf-java-util:3.25.3"' app/build.gradle
+          echo 'dependencies {' > temp.txt
+          cat app/build.gradle | grep -A 50 'dependencies {' | grep -B 50 '}' >> temp.txt
+          echo '    implementation "com.google.protobuf:protobuf-java:3.25.3"' >> temp.txt
+          echo '    implementation "com.google.protobuf:protobuf-java-util:3.25.3"' >> temp.txt
+          echo '    implementation "com.squareup.okhttp3:okhttp:4.12.0"' >> temp.txt
+          echo '    implementation "com.squareup.okhttp3:logging-interceptor:4.12.0"' >> temp.txt
+          echo '    implementation "com.squareup.retrofit2:retrofit:2.9.0"' >> temp.txt
+          echo '    implementation "com.squareup.retrofit2:converter-gson:2.9.0"' >> temp.txt
+          echo '}' >> temp.txt
+          mv temp.txt app/build.gradle
 
-      - name: 修复OkHttp/Retrofit依赖缺失
+      - name: 替换直播源接口
         run: |
-          sed -i '/dependencies {/a \
-              implementation "com.squareup.okhttp3:okhttp:4.12.0"\
-              implementation "com.squareup.okhttp3:logging-interceptor:4.12.0"\
-              implementation "com.squareup.retrofit2:retrofit:2.9.0"\
-              implementation "com.squareup.retrofit2:converter-gson:2.9.0"' app/build.gradle
+          sed -i 's|http.*\.json|http://home.jundie.top:81/top98.json|g' app/src/main/assets/api.json || true
 
-      - name: 授予权限
+      - name: 授予Gradle权限
         run: chmod +x gradlew
 
       - name: 编译Debug包
         run: ./gradlew assembleDebug
 
-      - name: 上传编译好的APK
+      - name: 上传APK
         uses: actions/upload-artifact@v4
         with:
-          name: 影视APP_编译成品
+          name: 影视APP_成品
           path: app/build/outputs/apk/debug/*.apk
