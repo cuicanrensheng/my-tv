@@ -1,34 +1,38 @@
-name: Build MyTV App
+name: 云编译影视APP
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:  # 加上这行，就能手动点 Run workflow 了
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: 拉取源码
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
+      - name: 配置JDK17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+      - name: 替换内置直播源接口
+        run: |
+          # 自行修改源码里的接口配置文件
+          # 一般是 AppConfig.kt / Constants.kt / api.json
+          sed -i 's|.*默认接口.*|const val API_URL = "http://home.jundie.top:81/top98.json"|g' app/src/main/java/**/AppConfig.kt || true
+          sed -i 's|http.*\.json|http://home.jundie.top:81/top98.json|g' app/src/main/assets/api.json || true
 
-    - name: Build with Gradle
-      run: ./gradlew assembleRelease
+      - name: 授予权限
+        run: chmod +x gradlew
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: MyTV-APK
-        path: app/build/outputs/apk/release/app-release.apk
+      - name: 编译Debug包
+        run: ./gradlew assembleDebug
+
+      - name: 上传编译好的APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: 影视APP_编译成品
+          path: app/build/outputs/apk/debug/*.apk
